@@ -1,8 +1,11 @@
 import os
 import logging
 from typing import List
+
+from medperf import config
 from medperf.entities.interface import Entity
 from medperf.entities.schemas import MedperfSchema, ApprovableSchema
+from medperf.exceptions import CommunicationRetrievalError
 
 
 class Association(Entity, ApprovableSchema):
@@ -42,3 +45,28 @@ class Association(Entity, ApprovableSchema):
         ]
 
         return associations
+
+    @classmethod
+    def __remote_all(cls, mine_only: bool = False) -> List["Association"]:
+        associations = []
+        if not mine_only:
+            raise NotImplementedError(
+                "Only current-user remote associations can be retrieved"
+            )
+
+        assocs_meta = []
+        try:
+            assocs_meta += config.comms.get_user_dataset_associations()
+            assocs_meta += config.comms.get_user_mlcube_associations()
+        except CommunicationRetrievalError:
+            msg = "Couldn't retrieve all benchmarks from the server"
+            logging.warning(msg)
+
+        associations = [cls(**meta) for meta in assocs_meta]
+        return associations
+
+    @classmethod
+    def __remote_all(cls) -> List["Association"]:
+        # NOOP. We don't store associations locally at the moment
+        return []
+
