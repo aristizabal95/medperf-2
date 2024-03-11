@@ -5,7 +5,12 @@ from medperf.entities.dataset import Dataset
 import medperf.config as config
 from medperf.entities.cube import Cube
 from medperf.utils import approval_prompt, dict_pretty_print
-from medperf.exceptions import CommunicationError, ExecutionError, InvalidArgumentError
+from medperf.exceptions import (
+    CommunicationError,
+    ExecutionError,
+    InvalidArgumentError,
+    CleanExit,
+)
 import yaml
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -203,12 +208,20 @@ class DataPreparation:
                 **sanity_params,
             )
         except ExecutionError:
-            msg = "The sanity check process failed. This most probably means the data could not be completely prepared. "
-            if self.report_specified:
-                msg += (
-                    f"You may want to check the status report at: {self.report_path} "
-                )
             self.dataset.unmark_as_ready()
+            if self.report_specified:
+                msg = (
+                    "The preprocessing stage finished executing, "
+                    "but the data doesn't appear to be ready. "
+                    "This most probably means you have outstanding tasks. "
+                    "Please verify the status of your data by using the "
+                    "monitoring tool if provided, or by checking the report "
+                    f"at {self.report_path}"
+                )
+                self.ui.print_warning(msg)
+                raise CleanExit()
+
+            msg = "The sanity check process failed"
             raise ExecutionError(msg)
         self.ui.print("> Sanity checks complete")
 
