@@ -6,14 +6,11 @@ from drf_spectacular.utils import extend_schema
 
 from .models import Dataset
 from .permissions import IsAdmin, IsDatasetOwner
-from .serializers import (
-    DatasetFullSerializer,
-    DatasetPublicSerializer,
-    DatasetDetailSerializer,
-)
+from .serializers import DatasetSerializer, DatasetDetailSerializer
 
 
 class DatasetList(GenericAPIView):
+    serializer_class = DatasetSerializer
     queryset = ""
 
     @extend_schema(operation_id="datasets_retrieve_all")
@@ -23,14 +20,14 @@ class DatasetList(GenericAPIView):
         """
         datasets = Dataset.objects.all()
         datasets = self.paginate_queryset(datasets)
-        serializer = DatasetPublicSerializer(datasets, many=True)
+        serializer = DatasetSerializer(datasets, many=True)
         return self.get_paginated_response(serializer.data)
 
     def post(self, request, format=None):
         """
         Creates a new dataset
         """
-        serializer = DatasetFullSerializer(data=request.data)
+        serializer = DatasetSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(owner=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -38,6 +35,7 @@ class DatasetList(GenericAPIView):
 
 
 class DatasetDetail(GenericAPIView):
+    serializer_class = DatasetDetailSerializer
     queryset = ""
 
     def get_permissions(self):
@@ -58,7 +56,7 @@ class DatasetDetail(GenericAPIView):
         Retrieve a dataset instance.
         """
         dataset = self.get_object(pk)
-        serializer = DatasetPublicSerializer(dataset)
+        serializer = DatasetDetailSerializer(dataset)
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):

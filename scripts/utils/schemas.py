@@ -64,22 +64,13 @@ PREP_MLCUBE_TASKS = Schema(
         "prepare": {
             "parameters": {
                 "inputs": {"data_path": object, "labels_path": object, **extra_inputs},
-                "outputs": {
-                    "output_path": object,
-                    "output_labels_path": object,
-                    "report_file": object,
-                },
+                "outputs": {"output_path": object, "output_labels_path": object},
             },
             **wild_card,
         },
         "sanity_check": {
             "parameters": {
-                "inputs": {
-                    "data_path": object,
-                    "labels_path": object,
-                    "report_file": object,
-                    **extra_inputs,
-                }
+                "inputs": {"data_path": object, "labels_path": object, **extra_inputs}
             },
             **wild_card,
         },

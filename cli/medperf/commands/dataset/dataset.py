@@ -6,9 +6,8 @@ from medperf.decorators import clean_except
 from medperf.entities.dataset import Dataset
 from medperf.commands.list import EntityList
 from medperf.commands.view import EntityView
-from medperf.commands.dataset.submit import DataCreation
-from medperf.commands.dataset.prepare import DataPreparation
-from medperf.commands.dataset.set_operational import DatasetSetOperational
+from medperf.commands.dataset.create import DataPreparation
+from medperf.commands.dataset.submit import DatasetRegistration
 from medperf.commands.dataset.associate import AssociateDataset
 
 app = typer.Typer()
@@ -19,100 +18,73 @@ app = typer.Typer()
 def list(
     local: bool = typer.Option(False, "--local", help="Get local datasets"),
     mine: bool = typer.Option(False, "--mine", help="Get current-user datasets"),
-    mlcube: int = typer.Option(
-        None, "--mlcube", "-m", help="Get datasets for a given data prep mlcube"
-    ),
 ):
     """List datasets stored locally and remotely from the user"""
     EntityList.run(
         Dataset,
-        fields=["UID", "Name", "Data Preparation Cube UID", "State", "Status", "Owner"],
+        fields=["UID", "Name", "Data Preparation Cube UID", "Registered"],
         local_only=local,
         mine_only=mine,
-        mlcube=mlcube,
     )
 
 
-@app.command("submit")
+@app.command("create")
 @clean_except
-def submit(
+def create(
     benchmark_uid: int = typer.Option(
         None, "--benchmark", "-b", help="UID of the desired benchmark"
     ),
     data_prep_uid: int = typer.Option(
         None, "--data_prep", "-p", help="UID of the desired preparation cube"
     ),
-    data_path: str = typer.Option(..., "--data_path", "-d", help="Path to the data"),
+    data_path: str = typer.Option(
+        ..., "--data_path", "-d", help="Location of the data to be prepared"
+    ),
     labels_path: str = typer.Option(
-        ..., "--labels_path", "-l", help="Path to the labels"
+        ..., "--labels_path", "-l", help="Labels file location"
     ),
-    metadata_path: str = typer.Option(
-        None,
-        "--metadata_path",
-        "-m",
-        help="Metadata folder location (Might be required if the dataset is already prepared)",
-    ),
-    name: str = typer.Option(
-        ..., "--name", help="A human-readable name of the dataset"
-    ),
+    name: str = typer.Option(..., "--name", help="Name of the dataset"),
     description: str = typer.Option(
-        None, "--description", help="A description of the dataset"
+        ..., "--description", help="Description of the dataset"
     ),
     location: str = typer.Option(
-        None, "--location", help="Location or Institution the data belongs to"
-    ),
-    approval: bool = typer.Option(False, "-y", help="Skip approval step"),
-    submit_as_prepared: bool = typer.Option(
-        False,
-        "--submit-as-prepared",
-        help="Use this flag if the dataset is already prepared",
+        ..., "--location", help="Location or Institution the data belongs to"
     ),
 ):
-    """Submits a Dataset instance to the backend"""
+    """Runs the Data preparation step for a specified benchmark and raw dataset
+    """
     ui = config.ui
-    DataCreation.run(
+    data_uid = DataPreparation.run(
         benchmark_uid,
         data_prep_uid,
         data_path,
         labels_path,
-        metadata_path,
         name=name,
         description=description,
         location=location,
-        approved=approval,
-        submit_as_prepared=submit_as_prepared,
     )
     ui.print("✅ Done!")
+    ui.print(
+        f"Next step: register the dataset with 'medperf dataset submit -d {data_uid}'"
+    )
 
 
-@app.command("prepare")
+@app.command("submit")
 @clean_except
-def prepare(
-    data_uid: str = typer.Option(..., "--data_uid", "-d", help="Dataset UID"),
-    approval: bool = typer.Option(
-        False,
-        "-y",
-        help="Skip report submission approval step (In this case, it is assumed to be approved)",
+def register(
+    data_uid: str = typer.Option(
+        ..., "--data_uid", "-d", help="Unregistered Dataset UID"
     ),
+    approval: bool = typer.Option(False, "-y", help="Skip approval step"),
 ):
-    """Runs the Data preparation step for a raw dataset"""
+    """Submits an unregistered Dataset instance to the backend
+    """
     ui = config.ui
-    DataPreparation.run(data_uid, approve_sending_reports=approval)
+    uid = DatasetRegistration.run(data_uid, approved=approval)
     ui.print("✅ Done!")
-
-
-@app.command("set_operational")
-@clean_except
-def set_operational(
-    data_uid: str = typer.Option(..., "--data_uid", "-d", help="Dataset UID"),
-    approval: bool = typer.Option(
-        False, "-y", help="Skip confirmation and statistics submission approval step"
-    ),
-):
-    """Marks a dataset as Operational"""
-    ui = config.ui
-    DatasetSetOperational.run(data_uid, approved=approval)
-    ui.print("✅ Done!")
+    ui.print(
+        f"Next step: associate the dataset with 'medperf dataset associate -b <BENCHMARK_UID> -d {uid}'"
+    )
 
 
 @app.command("associate")
@@ -126,9 +98,7 @@ def associate(
     ),
     approval: bool = typer.Option(False, "-y", help="Skip approval step"),
     no_cache: bool = typer.Option(
-        False,
-        "--no-cache",
-        help="Execute the test even if results already exist",
+        False, "--no-cache", help="Execute the test even if results already exist",
     ),
 ):
     """Associate a registered dataset with a specific benchmark.
@@ -137,6 +107,9 @@ def associate(
     ui = config.ui
     AssociateDataset.run(data_uid, benchmark_uid, approved=approval, no_cache=no_cache)
     ui.print("✅ Done!")
+    ui.print(
+        f"Next step: Once approved, run the benchmark with 'medperf run -b {benchmark_uid} -d {data_uid}'"
+    )
 
 
 @app.command("view")
@@ -164,5 +137,6 @@ def view(
         help="Output file to store contents. If not provided, the output will be displayed",
     ),
 ):
-    """Displays the information of one or more datasets"""
+    """Displays the information of one or more datasets
+    """
     EntityView.run(entity_id, Dataset, format, local, mine, output)

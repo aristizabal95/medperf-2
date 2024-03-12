@@ -1,3 +1,0 @@
-.warning {
-    border: tall $warning;
-}
