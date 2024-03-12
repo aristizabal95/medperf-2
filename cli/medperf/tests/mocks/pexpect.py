@@ -1,8 +1,7 @@
 class MockChild:
-    def __init__(self, exitstatus, stdout, pid):
+    def __init__(self, exitstatus, stdout):
         self.exitstatus = exitstatus
         self.stdout = stdout
-        self.pid = pid
 
     def __enter__(self, *args, **kwargs):
         return self
@@ -19,15 +18,11 @@ class MockChild:
     def close(self):
         pass
 
-    def wait(self):
-        pass
-
 
 class MockPexpect:
-    def __init__(self, exitstatus, stdout="", pid=123456):
+    def __init__(self, exitstatus, stdout=""):
         self.exitstatus = exitstatus
         self.stdout = stdout
-        self.pid = pid
 
     def spawn(self, command: str, timeout: int = 30) -> MockChild:
-        return MockChild(self.exitstatus, self.stdout, self.pid)
+        return MockChild(self.exitstatus, self.stdout)
