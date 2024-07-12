@@ -1,5 +1,6 @@
 from ._version import __version__
 from pathlib import Path
+from os import getenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -43,13 +44,14 @@ local_tokens_path = BASE_DIR / "mock_tokens" / "tokens.json"
 
 # Storage config
 config_storage = Path.home().resolve() / ".medperf_config"
-config_path = str(config_storage / "config.yaml")
+logs_storage = Path.home().resolve() / ".medperf_logs"
+config_path = getenv("MEDPERF_CONFIG_PATH", str(config_storage / "config.yaml"))
 auth_jwks_file = str(config_storage / ".jwks")
 creds_folder = str(config_storage / ".tokens")
+tokens_db = str(config_storage / ".tokens_db")
 
 images_folder = ".images"
 trash_folder = ".trash"
-logs_folder = "logs"
 tmp_folder = ".tmp"
 demo_datasets_folder = "demo"
 
@@ -71,10 +73,6 @@ storage = {
     "trash_folder": {
         "base": default_base_storage,
         "name": trash_folder,
-    },
-    "logs_folder": {
-        "base": default_base_storage,
-        "name": logs_folder,
     },
     "tmp_folder": {
         "base": default_base_storage,
@@ -117,7 +115,6 @@ storage = {
 root_folders = [
     "images_folder",
     "trash_folder",
-    "logs_folder",
     "tmp_folder",
     "demo_datasets_folder",
 ]
@@ -138,9 +135,15 @@ test_report_file = "test_report.yaml"
 reg_file = "registration-info.yaml"
 cube_metadata_filename = "mlcube-meta.yaml"
 log_file = "medperf.log"
+log_package_file = "medperf_logs.tar.gz"
 tarball_filename = "tmp.tar.gz"
 demo_dset_paths_file = "paths.yaml"
 mlcube_cache_file = ".cache_metadata.yaml"
+report_file = "report.yaml"
+metadata_folder = "metadata"
+statistics_filename = "statistics.yaml"
+dataset_raw_paths_file = "raw.yaml"
+ready_flag_file = ".ready"
 
 # MLCube assets conventions
 cube_filename = "mlcube.yaml"
@@ -153,6 +156,7 @@ image_path = "workspace/.image"
 default_page_size = 32  # This number was chosen arbitrarily
 ddl_stream_chunk_size = 10 * 1024 * 1024  # 10MB. This number was chosen arbitrarily
 ddl_max_redownload_attempts = 3
+wait_before_sending_reports = 30  # In seconds
 
 # Container config
 gpus = None
@@ -168,6 +172,7 @@ mlcube_inspect_timeout = None
 
 # Other
 loglevel = "debug"
+logs_backup_count = 100
 cleanup = True
 ui = "CLI"
 
