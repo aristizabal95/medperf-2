@@ -319,8 +319,6 @@ class Cube(Entity, DeployableSchema):
         gpu_args = self.get_config("docker.gpu_args") or ""
         cpu_args = " ".join([cpu_args, "-u $(id -u):$(id -g)"]).strip()
         gpu_args = " ".join([gpu_args, "-u $(id -u):$(id -g)"]).strip()
-        cmd += f' -Pdocker.cpu_args="{cpu_args}"'
-        cmd += f' -Pdocker.gpu_args="{gpu_args}"'
 
         if port is not None:
             if publish_on:
@@ -334,6 +332,9 @@ class Cube(Entity, DeployableSchema):
             env_args = self.get_config("docker.env_args") or ""
             env_args = " ".join([env_args, env_args_string]).strip()
             cmd += f' -Pdocker.env_args="{env_args}"'
+
+        cmd += f' -Pdocker.cpu_args="{cpu_args}"'
+        cmd += f' -Pdocker.gpu_args="{gpu_args}"'
 
         return cmd
 
