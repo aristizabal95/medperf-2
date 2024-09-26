@@ -234,6 +234,9 @@ class Cube(Entity, DeployableSchema):
         string_params: Dict[str, str] = {},
         timeout: int = None,
         read_protected_input: bool = True,
+        port=None,
+        publish_on=None,
+        env_dict: dict = {},
         **kwargs,
     ):
         """Executes a given task on the cube instance
@@ -244,6 +247,9 @@ class Cube(Entity, DeployableSchema):
                                                  Defaults to {}.
             timeout (int, optional): timeout for the task in seconds. Defaults to None.
             read_protected_input (bool, optional): Wether to disable write permissions on input volumes. Defaults to True.
+            port (int, optional): Which port to expose from the MLCube. If left empty, no port is exposed.
+            publish_on (int, optional): The network interface on the host to which the container's port should be bound. If left empty will use localhost.
+            env_dict (dict, optional): Environment variables to pass to the container. Defaults to an empty dictionary.
             kwargs (dict): additional arguments that are passed directly to the mlcube command
         """
         kwargs.update(string_params)
@@ -258,6 +264,13 @@ class Cube(Entity, DeployableSchema):
             cmd = " ".join([cmd, cmd_arg])
 
         container_loglevel = config.container_loglevel
+        if container_loglevel:
+            env_dict["MEDPERF_LOGLEVEL"] = container_loglevel.upper()
+
+        env_args_string = ""
+        for key, val in env_dict.items():
+            env_args_string += f"--env {key}={val} "
+        env_args_string = env_args_string.strip()
 
         # TODO: we should override run args instead of what we are doing below
         #       we shouldn't allow arbitrary run args unless our client allows it
@@ -267,16 +280,28 @@ class Cube(Entity, DeployableSchema):
             gpu_args = self.get_config("docker.gpu_args") or ""
             cpu_args = " ".join([cpu_args, "-u $(id -u):$(id -g)"]).strip()
             gpu_args = " ".join([gpu_args, "-u $(id -u):$(id -g)"]).strip()
+            if port is not None:
+                if publish_on:
+                    cpu_args += f" -p {publish_on}:{port}:{port}"
+                    gpu_args += f" -p {publish_on}:{port}:{port}"
+                else:
+                    cpu_args += f" -p {port}:{port}"
+                    gpu_args += f" -p {port}:{port}"
             cmd += f' -Pdocker.cpu_args="{cpu_args}"'
             cmd += f' -Pdocker.gpu_args="{gpu_args}"'
+            if env_args_string:  # TODO: why MLCube UI is so brittle?
+                env_args = self.get_config("docker.env_args") or ""
+                env_args = " ".join([env_args, env_args_string]).strip()
+                cmd += f' -Pdocker.env_args="{env_args}"'
 
-            if container_loglevel:
-                cmd += f' -Pdocker.env_args="-e MEDPERF_LOGLEVEL={container_loglevel.upper()}"'
         elif config.platform == "singularity":
             # use -e to discard host env vars, -C to isolate the container (see singularity run --help)
             run_args = self.get_config("singularity.run_args") or ""
             run_args = " ".join([run_args, "-eC"]).strip()
             cmd += f' -Psingularity.run_args="{run_args}"'
+            # TODO: check if ports are already exposed. Think if this is OK
+            # TODO: check about exposing to specific network interfaces
+            # TODO: check if --env works
 
             # set image name in case of running docker image with singularity
             # Assuming we only accept mlcube.yamls with either singularity or docker sections
@@ -286,7 +311,6 @@ class Cube(Entity, DeployableSchema):
                 cmd += (
                     f' -Psingularity.image="{self._converted_singularity_image_name}"'
                 )
-            # TODO: pass logging env for singularity also there
         else:
             raise InvalidArgumentError("Unsupported platform")
 

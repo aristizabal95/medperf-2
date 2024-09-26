@@ -1,11 +1,13 @@
 import typer
-from typing import Optional
+from typing import Optional, List, Any
+from typing_extensions import Annotated
 
 import medperf.config as config
 from medperf.decorators import clean_except
 from medperf.entities.cube import Cube
 from medperf.commands.list import EntityList
 from medperf.commands.view import EntityView
+from medperf.commands.mlcube.run import run_mlcube
 from medperf.commands.mlcube.create import CreateCube
 from medperf.commands.mlcube.submit import SubmitCube
 from medperf.commands.mlcube.associate import AssociateCube
@@ -28,6 +30,32 @@ def list(
         unregistered=unregistered,
         mine_only=mine,
     )
+
+
+@app.command("run", context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+@clean_except
+def run(
+    ctx: typer.Context,
+    mlcube_path: str = typer.Option(
+        ..., "--mlcube", "-m", help="path to mlcube folder"
+    ),
+    task: str = typer.Option(..., "--task", "-t", help="mlcube task to run"),
+    out_logs: str = typer.Option(
+        None, "--output-logs", "-o", help="where to store stdout"
+    ),
+    port: str = typer.Option(None, "--port", "-P", help="port to expose"),
+    env: List[str] = typer.Option(
+        [], "--env", "-e", help="Environment variables to pass to the MLCube as key=value pairs"
+    ),
+    params: List[str] = typer.Option(
+        [], "--param", "-p", help="Parameters to pass to MLCube as key=value pairs"
+    ),
+):
+    """List mlcubes stored locally and remotely from the user"""
+    params = dict([p.split("=") for p in params])
+    env = dict([p.split("=") for p in env])
+    run_mlcube(mlcube_path, task, out_logs, params, port, env)
+
 
 
 @app.command("create")
